@@ -727,6 +727,30 @@ npm install @askjo/camofox-browser
 
 Sketchy people are doing sketchy things with crypto tokens named "Camofox" now that this project is getting attention. **Camofox is not a crypto project and will never be one.** Any token, coin, or NFT using the Camofox name has nothing to do with us.
 
+## Borrow mode (fork addition)
+
+This fork adds one feature on top of upstream: if the env var
+`CAMOFOX_USER_DATA_DIR` is set to a path matching `/tmp/firefox-borrow-*`,
+the launch switches from `firefox.launch(options)` to
+`firefox.launchPersistentContext(userDataDir, options)`. The intent is to
+reuse a real Firefox profile (typically an rsync clone of the user's
+daily profile, prepared by an external shell wrapper) so a controlling
+agent can act on sites the user is already logged into.
+
+When the env var is unset (default), the wrapper behaves exactly like
+upstream — same `firefox.launch(options)` call, same ephemeral profile.
+
+Persistent launches in Playwright return a `BrowserContext`, not a
+`Browser`. The fork includes a `shimNewContext()` helper that:
+- aliases `.newContext()` to return the persistent context itself (one-shot
+  warning logged, options ignored), because Playwright forbids creating
+  additional contexts on a persistent launch.
+- stubs `.contexts()` to return `[self]` so downstream iteration works.
+
+Anything that asks for true session isolation in borrow mode gets the
+default context back. That's enough for single-site agent work; do not
+use borrow mode for multi-tenant scenarios.
+
 ## License
 
 MIT
